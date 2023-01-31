@@ -147,6 +147,9 @@ class Journal implements Sync, Closeable
         header.putInt(blkId) ;
         header.flip() ;
         channel.write(header) ;
+        if (data) {
+            throw new RuntimeException("????");
+        }
 
         Adler32 adler = new Adler32() ;
         adler.update(header.array()) ;

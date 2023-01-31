@@ -11,10 +11,10 @@ DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(DIR, ".."))
 from commons import *
 
-JAR_NAME = "myproject-1.0-SNAPSHOT-test-jar-with-dependencies.jar"
-ORIGIN_JAR_PATH = "target"
-TEST_CLASS = "org.apache.wicket.testapplication.Start"
-APPLICATION_NAMESPACE = "Lorg/apache/wicket"
+JAR_NAME = "jena-tdb-0.9.4-SNAPSHOT-test-jar-with-dependencies.jar"
+ORIGIN_JAR_PATH = "jena-tdb/target"
+TEST_CLASS = "com.hp.hpl.jena.tdb.extra.T_TDBWriteTransaction"
+APPLICATION_NAMESPACE = "Lcom/hp/hpl"
 @click.group(name="mode")
 def main():
     pass
@@ -23,13 +23,11 @@ def main():
 @main.command(name="build")
 def build():
     subprocess.call("jenv local 11", shell=True)
-    subprocess.call(["mvn", "install", "-DskipTests"], cwd=DIR)
+    subprocess.call(["mvn", "install", "-DskipTests"], cwd=os.path.join(DIR, "jena-tdb"))
 
 
 def post():
-    time.sleep(10)
-    requests.get("http://127.0.0.1:8080")
-    requests.get("http://127.0.0.1:8080")
+    pass
     
 
 @main.command(name="instrument")
@@ -50,7 +48,7 @@ def instrument():
                      ], cwd=DIR)
 
 def run_command(cmd: List[str]):
-    return subprocess.Popen(cmd)
+    return subprocess.call(cmd)
 
 
 @main.command(name="origin")
@@ -107,7 +105,9 @@ def dynamic(debug: bool):
            f"-DPhosphor.INSTRUMENTATION_CLASSPATH={INSTRUMENTATION_CLASSPATH}",
            f"-DPhosphor.ORIGIN_CLASSPATH={ORIGIN_CLASSPATH}",
            "-cp", f"{INSTRUMENTATION_FOLDER_NAME}/{JAR_NAME}",
-           f"-javaagent:{PHOSPHOR_AGENT_PATH}",
+           f"-javaagent:{PHOSPHOR_AGENT_PATH}=taintTagFactory=al.aoli.exchain.phosphor.instrumenter.DynamicSwitchTaintTagFactory"
+           ",postClassVisitor=al.aoli.exchain.phosphor.instrumenter.splitter.MethodSplitPostCV"
+           ",priorClassVisitor=al.aoli.exchain.phosphor.instrumenter.splitter.MethodSplitPreCV",
            f"-javaagent:{RUNTIME_JAR_PATH}=dynamic:{INSTRUMENTATION_CLASSPATH}",
            f"-agentpath:{NATIVE_LIB_PATH}=exchain:{APPLICATION_NAMESPACE}",
            TEST_CLASS]

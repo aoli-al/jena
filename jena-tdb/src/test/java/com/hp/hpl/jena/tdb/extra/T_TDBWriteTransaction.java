@@ -111,6 +111,7 @@ public class T_TDBWriteTransaction {
 				if ( bracketWithReader )
 					dataset1.begin(ReadWrite.READ) ;
 
+				boolean crashHappened = false;
 				for (int i = 0; i < TOTAL; i++) {
 					List<String> lastProcessedUris = new ArrayList<String>();
 					for (int j = 0; j < 10*i; j++) {
@@ -141,11 +142,15 @@ public class T_TDBWriteTransaction {
 						predicate = m.createProperty(INDEX_SIZE_PREDICATE);
 						m.addLiteral(subject, predicate, size);
 
-						ExecutorService executorService = Executors.newCachedThreadPool();
+
 						try {
 							dataset.commit();
 						} catch (Exception e) {
 							e.printStackTrace();
+							crashHappened = true;
+						}
+						if (crashHappened) {
+							dataset.abort();
 						}
 					} finally {
 						dataset.end();
