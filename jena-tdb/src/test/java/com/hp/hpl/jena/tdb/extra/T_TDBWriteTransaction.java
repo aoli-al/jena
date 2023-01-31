@@ -31,6 +31,13 @@ package com.hp.hpl.jena.tdb.extra ;
 
 import java.util.ArrayList ;
 import java.util.List ;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.openjena.atlas.lib.FileOps ;
 import org.openjena.atlas.logging.Log ;
@@ -59,7 +66,7 @@ public class T_TDBWriteTransaction {
 	final static String VERSION_PREDICATE =    "http://test.net/xmlns/test/1.0/indexVersion";
 	final static String INDEX_SIZE_PREDICATE = "http://test.net/xmlns/test/1.0/indexSize";
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         if ( true )
             SystemTDB.setFileMode(FileMode.direct) ;
 
@@ -81,8 +88,7 @@ public class T_TDBWriteTransaction {
 //	    run(location) ;
     }
 
-    static public void run(String location)
-    {
+    static public void run(final String location) throws Exception {
         if ( false )
         {
             Journal journal = Journal.create(new Location(location)) ;
@@ -93,60 +99,94 @@ public class T_TDBWriteTransaction {
 
 		//String baseGraphName = "com.ibm.test.graphNamePrefix.";   
 
-		long totalExecTime = 0L;
-		long size = 0;
-		Dataset dataset = TDBFactory.createDataset(location);
-		
-		Dataset dataset1 = TDBFactory.createDataset(location);
-		
-		if ( bracketWithReader )
-		    dataset1.begin(ReadWrite.READ) ;
-		
-		for (int i = 0; i < TOTAL; i++) {
-			List<String> lastProcessedUris = new ArrayList<String>();
-			for (int j = 0; j < 10*i; j++) {
-				String lastProcessedUri = "http://test.net/xmlns/test/1.0/someUri" + j;
-				lastProcessedUris.add(lastProcessedUri);
-			}
-			//Dataset dataset = TDBFactory.createDataset(location);
-			//String graphName = baseGraphName + i;
-			long t = System.currentTimeMillis();
+		final Dataset dataset = TDBFactory.createDataset(location);
 
-			try {
-				dataset.begin(ReadWrite.WRITE);
-				Model m = dataset.getDefaultModel();
+		Callable<Void> callable = new Callable<Void>() {
+			@Override
+			public Void call() throws Exception {
+				Dataset dataset1 = TDBFactory.createDataset(location);
+				long totalExecTime = 0L;
+				long size = 0;
 
-				m.removeAll();
-				Resource subject = m.createResource(INDEX_INFO_SUBJECT);
-				Property predicate = m.createProperty(TIMESTAMP_PREDICATE);
-				m.addLiteral(subject, predicate, System.currentTimeMillis());
-				predicate = m.createProperty(URI_PREDICATE);
-				for (String uri : lastProcessedUris) {
-					m.add(subject, predicate, m.createResource(uri));
+				if ( bracketWithReader )
+					dataset1.begin(ReadWrite.READ) ;
+
+				for (int i = 0; i < TOTAL; i++) {
+					List<String> lastProcessedUris = new ArrayList<String>();
+					for (int j = 0; j < 10*i; j++) {
+						String lastProcessedUri = "http://test.net/xmlns/test/1.0/someUri" + j;
+						lastProcessedUris.add(lastProcessedUri);
+					}
+					//Dataset dataset = TDBFactory.createDataset(location);
+					//String graphName = baseGraphName + i;
+					long t = System.currentTimeMillis();
+
+					try {
+						dataset.begin(ReadWrite.WRITE);
+						Model m = dataset.getDefaultModel();
+
+						m.removeAll();
+						Resource subject = m.createResource(INDEX_INFO_SUBJECT);
+						Property predicate = m.createProperty(TIMESTAMP_PREDICATE);
+						m.addLiteral(subject, predicate, System.currentTimeMillis());
+						predicate = m.createProperty(URI_PREDICATE);
+						for (String uri : lastProcessedUris) {
+							m.add(subject, predicate, m.createResource(uri));
+						}
+						predicate = m.createProperty(VERSION_PREDICATE);
+						m.addLiteral(subject, predicate, 1.0);
+
+						size += m.size() + 1;
+
+						predicate = m.createProperty(INDEX_SIZE_PREDICATE);
+						m.addLiteral(subject, predicate, size);
+
+						ExecutorService executorService = Executors.newCachedThreadPool();
+						try {
+							dataset.commit();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					} finally {
+						dataset.end();
+						long writeOperationDuration = System.currentTimeMillis() - t;
+						totalExecTime += writeOperationDuration;
+						System.out.println("Write operation " + i + " took " + writeOperationDuration + "ms");
+					}
 				}
-				predicate = m.createProperty(VERSION_PREDICATE);
-				m.addLiteral(subject, predicate, 1.0);
+				if ( bracketWithReader )
+					dataset1.end() ;
 
-				size += m.size() + 1;
-
-				predicate = m.createProperty(INDEX_SIZE_PREDICATE);
-				m.addLiteral(subject, predicate, size);
-
-				dataset.commit();
-			} catch (Throwable e) {
-				dataset.abort();
-				throw new RuntimeException(e);
-			} finally {
-				dataset.end();
-				long writeOperationDuration = System.currentTimeMillis() - t;
-				totalExecTime += writeOperationDuration;
-				System.out.println("Write operation " + i + " took " + writeOperationDuration + "ms");
+				System.out.println("All " + TOTAL + " write operations wrote " + size + " triples and took " + totalExecTime + "ms");
+				return null;
 			}
-		}
-        if ( bracketWithReader )
-            dataset1.end() ;
+		};
+		callable.call();
 
-		System.out.println("All " + TOTAL + " write operations wrote " + size + " triples and took " + totalExecTime + "ms");
+//		ExecutorService executor = Executors.newSingleThreadExecutor();
+//		Future<Void> future = executor.submit(callable);
+//		try {
+//			future.get(5, TimeUnit.SECONDS);
+//		} catch (TimeoutException ex) {
+//			executor.shutdown();
+//			Future<Void> result = (Future<Void>) executor.submit(new Runnable() {
+//				@Override
+//				public void run() {
+//					dataset.abort();
+//				}
+//			});
+//			result.get();
+//			// handle the timeout
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//			// handle the interrupts
+//		} catch (ExecutionException e) {
+//			// handle other exceptions
+//		} finally {
+////			future.cancel(true); // may or may not desire this
+//		}
+
+
 	}
 
 }

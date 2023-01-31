@@ -118,12 +118,11 @@ class Journal implements Sync, Closeable
 //    {
 //        return _write(Block, fileRef, null, block) ;
 //    }
+    static boolean data = true;
      
     synchronized
     public long write(JournalEntryType type, FileRef fileRef, Block block)
     {
-        //log.info("@"+position()+" -- "+type+","+fileRef+", "+buffer+", "+block) ;
-
         ByteBuffer buffer = (block == null) ? null : block.getByteBuffer() ;
         
         long posn = position ;
@@ -148,7 +147,7 @@ class Journal implements Sync, Closeable
         header.putInt(blkId) ;
         header.flip() ;
         channel.write(header) ;
-        
+
         Adler32 adler = new Adler32() ;
         adler.update(header.array()) ;
 
