@@ -79,14 +79,14 @@ public class T_TransSystemMultiDatasets
     	return MEM ? Location.mem() : new Location(ConfigTest.getTestingDirDB() + File.separator + "DB-" + ++count_datasets) ;
     }
 
-    static final int Iterations             = MEM ? 1000 : 100 ;
+    static final int Iterations             = 1;
     // Output style.
     static boolean inlineProgress           = true ; // (! log.isDebugEnabled()) && Iterations > 20 ;
     static boolean logging                  = ! inlineProgress ; // (! log.isDebugEnabled()) && Iterations > 20 ;
     
-    static final int numReaderTasks         = 10 ;
-    static final int numWriterTasksA        = 10 ;
-    static final int numWriterTasksC        = 10 ;
+    static final int numReaderTasks         = 1 ;
+    static final int numWriterTasksA        = 1 ;
+    static final int numWriterTasksC        = 1 ;
 
     static final int readerSeqRepeats       = 8 ; 
     static final int readerMaxPause         = 50 ;

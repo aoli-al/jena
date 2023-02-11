@@ -100,73 +100,89 @@ public class T_TDBWriteTransaction {
 		//String baseGraphName = "com.ibm.test.graphNamePrefix.";   
 
 		final Dataset dataset = TDBFactory.createDataset(location);
+		long totalExecTime = 0L;
+		long size = 0;
 
-		Callable<Void> callable = new Callable<Void>() {
-			@Override
-			public Void call() throws Exception {
-				Dataset dataset1 = TDBFactory.createDataset(location);
-				long totalExecTime = 0L;
-				long size = 0;
-
-				if ( bracketWithReader )
-					dataset1.begin(ReadWrite.READ) ;
-
-				boolean crashHappened = false;
-				for (int i = 0; i < TOTAL; i++) {
-					List<String> lastProcessedUris = new ArrayList<String>();
-					for (int j = 0; j < 10*i; j++) {
-						String lastProcessedUri = "http://test.net/xmlns/test/1.0/someUri" + j;
-						lastProcessedUris.add(lastProcessedUri);
-					}
-					//Dataset dataset = TDBFactory.createDataset(location);
-					//String graphName = baseGraphName + i;
-					long t = System.currentTimeMillis();
-
-					try {
-						dataset.begin(ReadWrite.WRITE);
-						Model m = dataset.getDefaultModel();
-
-						m.removeAll();
-						Resource subject = m.createResource(INDEX_INFO_SUBJECT);
-						Property predicate = m.createProperty(TIMESTAMP_PREDICATE);
-						m.addLiteral(subject, predicate, System.currentTimeMillis());
-						predicate = m.createProperty(URI_PREDICATE);
-						for (String uri : lastProcessedUris) {
-							m.add(subject, predicate, m.createResource(uri));
-						}
-						predicate = m.createProperty(VERSION_PREDICATE);
-						m.addLiteral(subject, predicate, 1.0);
-
-						size += m.size() + 1;
-
-						predicate = m.createProperty(INDEX_SIZE_PREDICATE);
-						m.addLiteral(subject, predicate, size);
-
-
-						try {
-							dataset.commit();
-						} catch (Exception e) {
-							e.printStackTrace();
-							crashHappened = true;
-						}
-						if (crashHappened) {
-							dataset.abort();
-						}
-					} finally {
-						dataset.end();
-						long writeOperationDuration = System.currentTimeMillis() - t;
-						totalExecTime += writeOperationDuration;
-						System.out.println("Write operation " + i + " took " + writeOperationDuration + "ms");
-					}
-				}
-				if ( bracketWithReader )
-					dataset1.end() ;
-
-				System.out.println("All " + TOTAL + " write operations wrote " + size + " triples and took " + totalExecTime + "ms");
-				return null;
+		boolean crashHappened = false;
+		for (int i = 0; i < TOTAL; i++) {
+			List<String> lastProcessedUris = new ArrayList<String>();
+			for (int j = 0; j < 10*i; j++) {
+				String lastProcessedUri = "http://test.net/xmlns/test/1.0/someUri" + j;
+				lastProcessedUris.add(lastProcessedUri);
 			}
-		};
-		callable.call();
+			//Dataset dataset = TDBFactory.createDataset(location);
+			//String graphName = baseGraphName + i;
+			long t = System.currentTimeMillis();
+
+			try {
+				dataset.begin(ReadWrite.WRITE);
+				Model m = dataset.getDefaultModel();
+
+				m.removeAll();
+				Resource subject = m.createResource(INDEX_INFO_SUBJECT);
+				Property predicate = m.createProperty(TIMESTAMP_PREDICATE);
+				m.addLiteral(subject, predicate, System.currentTimeMillis());
+				predicate = m.createProperty(URI_PREDICATE);
+				for (String uri : lastProcessedUris) {
+					m.add(subject, predicate, m.createResource(uri));
+				}
+				predicate = m.createProperty(VERSION_PREDICATE);
+				m.addLiteral(subject, predicate, 1.0);
+
+				size += m.size() + 1;
+
+				predicate = m.createProperty(INDEX_SIZE_PREDICATE);
+				m.addLiteral(subject, predicate, size);
+
+
+				try {
+					dataset.commit();
+				} catch (Exception e) {
+					e.printStackTrace();
+					crashHappened = true;
+				}
+
+				String location1 = "DBX1" ;
+				FileOps.ensureDir(location1) ;
+				Dataset dataset1 = TDBFactory.createDataset(location1);
+
+
+				dataset1.begin(ReadWrite.READ);
+				Model m1 = dataset.getDefaultModel();
+
+				m1.removeAll();
+				Resource subject1 = m1.createResource(INDEX_INFO_SUBJECT);
+				Property predicate1 = m1.createProperty(TIMESTAMP_PREDICATE);
+				m1.addLiteral(subject1, predicate1, System.currentTimeMillis());
+				predicate1 = m1.createProperty(URI_PREDICATE);
+				for (String uri : lastProcessedUris) {
+					m1.add(subject1, predicate1, m1.createResource(uri));
+				}
+				predicate1 = m.createProperty(VERSION_PREDICATE);
+				m1.addLiteral(subject1, predicate1, 1.0);
+
+				size += m1.size() + 1;
+
+				predicate1 = m1.createProperty(INDEX_SIZE_PREDICATE);
+				m1.addLiteral(subject1, predicate1, size);
+				dataset1.commit();
+
+
+				T_TransSystemMultiDatasets.main();
+
+				if (crashHappened) {
+					dataset.abort();
+				}
+			} finally {
+				dataset.end();
+				long writeOperationDuration = System.currentTimeMillis() - t;
+				totalExecTime += writeOperationDuration;
+				System.out.println("Write operation " + i + " took " + writeOperationDuration + "ms");
+			}
+		}
+
+		System.out.println("All " + TOTAL + " write operations wrote " + size + " triples and took " + totalExecTime + "ms");
+	}
 
 //		ExecutorService executor = Executors.newSingleThreadExecutor();
 //		Future<Void> future = executor.submit(callable);
@@ -191,7 +207,5 @@ public class T_TDBWriteTransaction {
 ////			future.cancel(true); // may or may not desire this
 //		}
 
-
-	}
 
 }
