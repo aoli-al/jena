@@ -18,6 +18,7 @@
 
 package org.apache.jena.http;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -33,6 +34,8 @@ import java.net.http.HttpResponse.BodyHandler;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpResponse.BodySubscribers;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -47,6 +50,7 @@ import org.apache.jena.atlas.io.IO;
 import org.apache.jena.atlas.lib.IRILib;
 import org.apache.jena.atlas.web.HttpException;
 import org.apache.jena.atlas.web.TypedInputStream;
+import org.apache.jena.base.Sys;
 import org.apache.jena.http.auth.AuthEnv;
 import org.apache.jena.http.auth.AuthLib;
 import org.apache.jena.http.sys.HttpRequestModifier;
@@ -558,7 +562,10 @@ public class HttpLib {
             }
         }
         try {
-            return AuthLib.authExecute(httpClient, httpRequest, bodyHandler);
+            Long time = System.nanoTime();
+            HttpResponse<X> response = AuthLib.authExecute(httpClient, httpRequest, bodyHandler);
+            logResponse(response, System.nanoTime() - time);
+            return response;
         } finally {
             if ( key != null )
                 // The AuthEnv is "per tenant".
@@ -567,6 +574,20 @@ public class HttpLib {
                 authEnv.unregisterUsernamePassword(key);
         }
     }
+
+    private static BufferedWriter writer;
+
+    static {
+        try {
+            String forDate = System.getenv("PERF_OUT_FILE");
+            if (forDate == null) {
+                forDate = "/tmp/perf_out.txt";
+            }
+            writer = Files.newBufferedWriter(Paths.get(forDate), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+        }
+    }
+
 
     /**
      * Execute request and return a response without authentication challenge handling.
@@ -579,8 +600,9 @@ public class HttpLib {
         try {
             // This is the one place all HTTP requests go through.
             logRequest(httpRequest);
+            long start = System.nanoTime();
             HttpResponse<T> httpResponse = httpClient.send(httpRequest, bodyHandler);
-            logResponse(httpResponse);
+            logResponse(httpResponse, System.nanoTime() - start);
             return httpResponse;
         //} catch (HttpTimeoutException ex) {
         } catch (IOException | InterruptedException ex) {
@@ -635,7 +657,13 @@ public class HttpLib {
     private static void logAsyncRequest(HttpRequest httpRequest) {}
 
         /** Response (do not touch the body!)  */
-    private static void logResponse(HttpResponse<?> httpResponse) {
+    private static void logResponse(HttpResponse<?> httpResponse, long time) {
+        System.out.println(httpResponse);
+        try {
+            writer.write(httpResponse.uri().toString() + ", " + time + "\n");
+            writer.flush();
+        } catch (Exception e) {
+        }
 //        httpResponse.uri();
 //        httpResponse.statusCode();
 //        httpResponse.headers();
