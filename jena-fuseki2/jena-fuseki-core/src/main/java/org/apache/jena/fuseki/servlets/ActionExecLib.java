@@ -18,6 +18,12 @@
 
 package org.apache.jena.fuseki.servlets;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -29,6 +35,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.jena.atlas.RuntimeIOException;
 import org.apache.jena.atlas.logging.FmtLog;
 import org.apache.jena.atlas.web.HttpException;
+import org.apache.jena.base.Sys;
 import org.apache.jena.fuseki.Fuseki;
 import org.apache.jena.fuseki.server.*;
 import org.apache.jena.fuseki.system.ActionCategory;
@@ -177,9 +184,34 @@ public class ActionExecLib {
             finishRequest(action);
         }
         // Handled - including sending back errors.
+        logResponseTime(action);
         logResponse(action);
         archiveHttpAction(action);
         return true;
+    }
+
+    private static void logResponseTime(HttpAction action) {
+        try {
+            writer.write(action.getRequest().getRequestURL().toString() + ", " + (action.getStartTime() - action.getFinishTime()) + "\n");
+            writer.flush();
+        } catch (Exception e) {
+        }
+//        httpResponse.uri();
+//        httpResponse.statusCode();
+//        httpResponse.headers();
+//        httpResponse.previousResponse();
+    }
+
+    private static BufferedWriter writer;
+    static {
+        try {
+            String forDate = System.getenv("PERF_OUT_FILE");
+            if (forDate == null) {
+                forDate = "/tmp/perf_out.txt";
+            }
+            writer = new BufferedWriter(new FileWriter(forDate, true));
+        } catch (IOException e) {
+        }
     }
 
     /**

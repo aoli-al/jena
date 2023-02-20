@@ -562,9 +562,7 @@ public class HttpLib {
             }
         }
         try {
-            Long time = System.nanoTime();
             HttpResponse<X> response = AuthLib.authExecute(httpClient, httpRequest, bodyHandler);
-            logResponse(response, System.nanoTime() - time);
             return response;
         } finally {
             if ( key != null )
@@ -658,11 +656,13 @@ public class HttpLib {
 
         /** Response (do not touch the body!)  */
     private static void logResponse(HttpResponse<?> httpResponse, long time) {
-        System.out.println(httpResponse);
-        try {
-            writer.write(httpResponse.uri().toString() + ", " + time + "\n");
-            writer.flush();
-        } catch (Exception e) {
+        if ("true".equals(System.getProperty("bench_started"))) {
+            System.out.println(httpResponse);
+            try {
+                writer.write(httpResponse.uri().toString() + ", " + time + "\n");
+                writer.flush();
+            } catch (Exception e) {
+            }
         }
 //        httpResponse.uri();
 //        httpResponse.statusCode();
