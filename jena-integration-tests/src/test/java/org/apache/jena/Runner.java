@@ -16,21 +16,23 @@ import java.security.NoSuchAlgorithmException;
 public class Runner {
 
     public static void main(String[] args) throws NoSuchAlgorithmException {
+        String forDate = System.getenv("PERF_OUT_FILE");
+        if (forDate == null) {
+            forDate = "/tmp/perf_out.txt";
+        }
+        File file = new File(forDate);
+        if (file.exists()) {
+            file.delete();
+        }
+        try {
+            file.createNewFile();
+        } catch (IOException e) {
+        }
         for (int i = 0; i < 5; i++) {
             if (i < 4) {
+                System.setProperty("bench_started", "false");
             } else {
-                String forDate = System.getenv("PERF_OUT_FILE");
-                if (forDate == null) {
-                    forDate = "/tmp/perf_out.txt";
-                }
-                File file = new File(forDate);
-                if (file.exists()) {
-                    file.delete();
-                }
-                try {
-                    file.createNewFile();
-                } catch (IOException e) {
-                }
+                System.setProperty("bench_started", "true");
             }
             JUnitCore core = new JUnitCore();
             core.run(TS_GeoSPARQL.class);

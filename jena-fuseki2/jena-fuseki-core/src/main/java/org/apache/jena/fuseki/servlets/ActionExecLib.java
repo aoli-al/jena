@@ -191,10 +191,12 @@ public class ActionExecLib {
     }
 
     private static void logResponseTime(HttpAction action) {
-        try {
-            writer.write(action.getRequest().getRequestURL().toString() + ", " + (action.getStartTime() - action.getFinishTime()) + "\n");
-            writer.flush();
-        } catch (Exception e) {
+        if ("true".equals(System.getProperty("bench_started"))) {
+            try {
+                writer.write(action.getRequest().getRequestURL().toString() + ", " + (action.getFinishTime() - action.getStartTime()) + "\n");
+                writer.flush();
+            } catch (Exception e) {
+            }
         }
 //        httpResponse.uri();
 //        httpResponse.statusCode();
