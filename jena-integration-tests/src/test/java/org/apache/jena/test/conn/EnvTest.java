@@ -79,17 +79,25 @@ public class EnvTest {
     private final String badPassword    = "bad-p";
     private final String user;
     private final String password;
+    private static EnvTest instance = null;
+
+
+
 
     public static EnvTest create(String dsName) {
         return create(dsName, null);
     }
 
     public static EnvTest create(String dsName, DatasetGraph dsg) {
-        return new EnvTest(dsName, dsg, null, null);
+        return createAuth(dsName, dsg, null, null);
     }
 
     public static EnvTest createAuth(String dsName, DatasetGraph dsg, String user, String password) {
-        return new EnvTest(dsName, dsg, user, password);
+        if (instance != null) {
+            return instance;
+        }
+        instance = new EnvTest(dsName, dsg, user, password);
+        return instance;
     }
 
     // verbose - development debugging aid for individual tests.
@@ -173,13 +181,13 @@ public class EnvTest {
 
     /** Stop a test environment - can pass a null as env */
     public static void stop(EnvTest env) {
-        if ( env != null )
-            env.stop();
+//        if ( env != null )
+//            env.stop();
     }
 
     public void stop() {
-        if ( server != null )
-            server.stop();
+//        if ( server != null )
+//            server.stop();
     }
 
     // Can reuse this one.
