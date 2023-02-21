@@ -35,10 +35,7 @@ public class Runner {
                 System.setProperty("bench_started", "true");
             }
             JUnitCore core = new JUnitCore();
-            core.run(TS_GeoSPARQL.class);
             core.run(TS_JenaHttp.class);
-            core.run(TS_GeoSPARQL.class);
-            core.run(TC_Integration.class);
 
         }
         System.exit(0);

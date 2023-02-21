@@ -193,7 +193,8 @@ public class ActionExecLib {
     private static void logResponseTime(HttpAction action) {
         if ("true".equals(System.getProperty("bench_started"))) {
             try {
-                writer.write(action.getRequest().getRequestURL().toString() + ", " + (action.getTime()) + "\n");
+                writer.write(action.getRequest().getRequestURL().toString() + ", " + (action.getTime()) +
+                        "\n");
                 writer.flush();
             } catch (Exception e) {
             }
