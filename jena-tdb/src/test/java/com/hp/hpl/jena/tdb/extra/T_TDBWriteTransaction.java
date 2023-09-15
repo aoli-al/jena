@@ -70,7 +70,7 @@ public class T_TDBWriteTransaction {
         if ( true )
             SystemTDB.setFileMode(FileMode.direct) ;
 
-        Log.setLog4j() ;
+        Log.setLog4j("jena-tdb/log4j.properties") ;
 	    TransactionManager.QueueBatchSize = 10;
 	    
 //		if (args.length == 0) {
@@ -182,6 +182,7 @@ public class T_TDBWriteTransaction {
 		}
 
 		System.out.println("All " + TOTAL + " write operations wrote " + size + " triples and took " + totalExecTime + "ms");
+		Thread.sleep(2000);
 	}
 
 //		ExecutorService executor = Executors.newSingleThreadExecutor();
